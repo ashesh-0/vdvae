@@ -1,14 +1,23 @@
+import itertools
+from collections import defaultdict
+
+import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from vae_helpers import HModule, get_1x1, get_3x3, DmolNet, draw_gaussian_diag_samples, gaussian_analytical_kl
-from collections import defaultdict
-import numpy as np
-import itertools
+
+from vae_helpers import (DmolNet, HModule, draw_gaussian_diag_samples, gaussian_analytical_kl, get_1x1, get_3x3)
 
 
 class Block(nn.Module):
-    def __init__(self, in_width, middle_width, out_width, down_rate=None, residual=False, use_3x3=True, zero_last=False):
+    def __init__(self,
+                 in_width,
+                 middle_width,
+                 out_width,
+                 down_rate=None,
+                 residual=False,
+                 use_3x3=True,
+                 zero_last=False):
         super().__init__()
         self.down_rate = down_rate
         self.residual = residual
@@ -73,7 +82,13 @@ class Encoder(HModule):
         blockstr = parse_layer_string(H.enc_blocks)
         for res, down_rate in blockstr:
             use_3x3 = res > 2  # Don't use 3x3s for 1x1, 2x2 patches
-            enc_blocks.append(Block(self.widths[res], int(self.widths[res] * H.bottleneck_multiple), self.widths[res], down_rate=down_rate, residual=True, use_3x3=use_3x3))
+            enc_blocks.append(
+                Block(self.widths[res],
+                      int(self.widths[res] * H.bottleneck_multiple),
+                      self.widths[res],
+                      down_rate=down_rate,
+                      residual=True,
+                      use_3x3=use_3x3))
         n_blocks = len(blockstr)
         for b in enc_blocks:
             b.c4.weight.data *= np.sqrt(1 / n_blocks)
@@ -160,7 +175,9 @@ class DecBlock(nn.Module):
             x = xs[self.base]
         except KeyError:
             ref = xs[list(xs.keys())[0]]
-            x = torch.zeros(dtype=ref.dtype, size=(ref.shape[0], self.widths[self.base], self.base, self.base), device=ref.device)
+            x = torch.zeros(dtype=ref.dtype,
+                            size=(ref.shape[0], self.widths[self.base], self.base, self.base),
+                            device=ref.device)
         if self.mixin is not None:
             x = x + F.interpolate(xs[self.mixin][:, :x.shape[1], ...], scale_factor=self.base // self.mixin)
         z, x = self.sample_uncond(x, t, lvs=lvs)
@@ -171,7 +188,6 @@ class DecBlock(nn.Module):
 
 
 class Decoder(HModule):
-
     def build(self):
         H = self.H
         resos = set()
@@ -183,7 +199,10 @@ class Decoder(HModule):
             resos.add(res)
         self.resolutions = sorted(resos)
         self.dec_blocks = nn.ModuleList(dec_blocks)
-        self.bias_xs = nn.ParameterList([nn.Parameter(torch.zeros(1, self.widths[res], res, res)) for res in self.resolutions if res <= H.no_bias_above])
+        self.bias_xs = nn.ParameterList([
+            nn.Parameter(torch.zeros(1, self.widths[res], res, res)) for res in self.resolutions
+            if res <= H.no_bias_above
+        ])
         self.out_net = DmolNet(H)
         self.gain = nn.Parameter(torch.ones(1, H.width, 1, 1))
         self.bias = nn.Parameter(torch.zeros(1, H.width, 1, 1))

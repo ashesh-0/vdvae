@@ -1,12 +1,13 @@
-from mpi4py import MPI
-import os
 import json
+import os
+import subprocess
 import tempfile
+import time
+
 import numpy as np
 import torch
-import time
-import subprocess
 import torch.distributed as dist
+from mpi4py import MPI
 
 
 def allreduce(x, average):
@@ -17,7 +18,8 @@ def allreduce(x, average):
 
 def get_cpu_stats_over_ranks(stat_dict):
     keys = sorted(stat_dict.keys())
-    allreduced = allreduce(torch.stack([torch.as_tensor(stat_dict[k]).detach().cuda().float() for k in keys]), average=True).cpu()
+    allreduced = allreduce(torch.stack([torch.as_tensor(stat_dict[k]).detach().cuda().float() for k in keys]),
+                           average=True).cpu()
     return {k: allreduced[i].item() for (i, k) in enumerate(keys)}
 
 
@@ -99,9 +101,7 @@ def maybe_download(path, filename=None):
 
 def tile_images(images, d1=4, d2=4, border=1):
     id1, id2, c = images[0].shape
-    out = np.ones([d1 * id1 + border * (d1 + 1),
-                   d2 * id2 + border * (d2 + 1),
-                   c], dtype=np.uint8)
+    out = np.ones([d1 * id1 + border * (d1 + 1), d2 * id2 + border * (d2 + 1), c], dtype=np.uint8)
     out *= 255
     if len(images) != d1 * d2:
         raise ValueError('Wrong num of images')

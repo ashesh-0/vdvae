@@ -1,8 +1,9 @@
-import sys
-import numpy as np
-import imageio
 import glob
 import os
+import sys
+
+import imageio
+import numpy as np
 
 if __name__ == "__main__":
     print("moving images in", sys.argv[1], "to", sys.argv[2])

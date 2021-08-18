@@ -1,23 +1,21 @@
-import torch
-import numpy as np
-from mpi4py import MPI
-import socket
 import argparse
-import os
 import json
+import os
+import socket
 import subprocess
-from hps import Hyperparams, parse_args_and_update_hparams, add_vae_arguments
-from utils import (logger,
-                   local_mpi_rank,
-                   mpi_size,
-                   maybe_download,
-                   mpi_rank)
-from data import mkdir_p
 from contextlib import contextmanager
+
+import numpy as np
+import torch
 import torch.distributed as dist
 from apex.optimizers import FusedAdam as AdamW
-from vae import VAE
+from mpi4py import MPI
 from torch.nn.parallel.distributed import DistributedDataParallel
+
+from data import mkdir_p
+from hps import Hyperparams, add_vae_arguments, parse_args_and_update_hparams
+from utils import local_mpi_rank, logger, maybe_download, mpi_rank, mpi_size
+from vae import VAE
 
 
 def update_ema(vae, ema_vae, ema_rate):
@@ -62,6 +60,7 @@ def accumulate_stats(stats, frequency):
 def linear_warmup(warmup_iters):
     def f(iteration):
         return 1.0 if iteration > warmup_iters else iteration / warmup_iters
+
     return f
 
 
@@ -123,7 +122,8 @@ def set_up_hyperparams(s=None):
 
 
 def restore_params(model, path, local_rank, mpi_size, map_ddp=True, map_cpu=False):
-    state_dict = torch.load(distributed_maybe_download(path, local_rank, mpi_size), map_location='cpu' if map_cpu else None)
+    state_dict = torch.load(distributed_maybe_download(path, local_rank, mpi_size),
+                            map_location='cpu' if map_cpu else None)
     if map_ddp:
         new_state_dict = {}
         l = len('module.')
@@ -181,7 +181,8 @@ def load_opt(H, vae, logprint):
 
     if H.restore_optimizer_path:
         optimizer.load_state_dict(
-            torch.load(distributed_maybe_download(H.restore_optimizer_path, H.local_rank, H.mpi_size), map_location='cpu'))
+            torch.load(distributed_maybe_download(H.restore_optimizer_path, H.local_rank, H.mpi_size),
+                       map_location='cpu'))
     if H.restore_log_path:
         cur_eval_loss, iterate, starting_epoch = restore_log(H.restore_log_path, H.local_rank, H.mpi_size)
     else:

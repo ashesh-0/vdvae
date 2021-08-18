@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 @torch.jit.script
 def gaussian_analytical_kl(mu1, mu2, logsigma1, logsigma2):
-    return -0.5 + logsigma2 - logsigma1 + 0.5 * (logsigma1.exp() ** 2 + (mu1 - mu2) ** 2) / (logsigma2.exp() ** 2)
+    return -0.5 + logsigma2 - logsigma1 + 0.5 * (logsigma1.exp()**2 + (mu1 - mu2)**2) / (logsigma2.exp()**2)
 
 
 @torch.jit.script
@@ -60,9 +60,13 @@ def discretized_mix_logistic_loss(x, l, low_bit=False):
     means = l[:, :, :, :, :nr_mix]
     log_scales = const_max(l[:, :, :, :, nr_mix:2 * nr_mix], -7.)
     coeffs = torch.tanh(l[:, :, :, :, 2 * nr_mix:3 * nr_mix])
-    x = torch.reshape(x, xs + [1]) + torch.zeros(xs + [nr_mix]).to(x.device)  # here and below: getting the means and adjusting them based on preceding sub-pixels
-    m2 = torch.reshape(means[:, :, :, 1, :] + coeffs[:, :, :, 0, :] * x[:, :, :, 0, :], [xs[0], xs[1], xs[2], 1, nr_mix])
-    m3 = torch.reshape(means[:, :, :, 2, :] + coeffs[:, :, :, 1, :] * x[:, :, :, 0, :] + coeffs[:, :, :, 2, :] * x[:, :, :, 1, :], [xs[0], xs[1], xs[2], 1, nr_mix])
+    x = torch.reshape(x, xs + [1]) + torch.zeros(xs + [nr_mix]).to(
+        x.device)  # here and below: getting the means and adjusting them based on preceding sub-pixels
+    m2 = torch.reshape(means[:, :, :, 1, :] + coeffs[:, :, :, 0, :] * x[:, :, :, 0, :],
+                       [xs[0], xs[1], xs[2], 1, nr_mix])
+    m3 = torch.reshape(
+        means[:, :, :, 2, :] + coeffs[:, :, :, 1, :] * x[:, :, :, 0, :] + coeffs[:, :, :, 2, :] * x[:, :, :, 1, :],
+        [xs[0], xs[1], xs[2], 1, nr_mix])
     means = torch.cat([torch.reshape(means[:, :, :, 0, :], [xs[0], xs[1], xs[2], 1, nr_mix]), m2, m3], dim=3)
     centered_x = x - means
     inv_stdv = torch.exp(-log_scales)
@@ -79,7 +83,8 @@ def discretized_mix_logistic_loss(x, l, low_bit=False):
     log_one_minus_cdf_min = -F.softplus(min_in)  # log probability for edge case of 255 (before scaling)
     cdf_delta = cdf_plus - cdf_min  # probability for all other cases
     mid_in = inv_stdv * centered_x
-    log_pdf_mid = mid_in - log_scales - 2. * F.softplus(mid_in)  # log probability in the center of the bin, to be used in extreme cases (not actually used in our code)
+    log_pdf_mid = mid_in - log_scales - 2. * F.softplus(
+        mid_in)  # log probability in the center of the bin, to be used in extreme cases (not actually used in our code)
 
     # now select the right output: left edge case, right edge case, normal case, extremely low prob case (doesn't actually happen for us)
 
@@ -91,21 +96,17 @@ def discretized_mix_logistic_loss(x, l, low_bit=False):
     # the 1e-12 in tf.maximum(cdf_delta, 1e-12) is never actually used as output, it's purely there to get around the tf.select() gradient issue
     # if the probability on a sub-pixel is below 1e-5, we use an approximation based on the assumption that the log-density is constant in the bin of the observed sub-pixel value
     if low_bit:
-        log_probs = torch.where(x < -0.999,
-                                log_cdf_plus,
-                                torch.where(x > 0.999,
-                                            log_one_minus_cdf_min,
-                                            torch.where(cdf_delta > 1e-5,
-                                                        torch.log(const_max(cdf_delta, 1e-12)),
-                                                        log_pdf_mid - np.log(15.5))))
+        log_probs = torch.where(
+            x < -0.999, log_cdf_plus,
+            torch.where(
+                x > 0.999, log_one_minus_cdf_min,
+                torch.where(cdf_delta > 1e-5, torch.log(const_max(cdf_delta, 1e-12)), log_pdf_mid - np.log(15.5))))
     else:
-        log_probs = torch.where(x < -0.999,
-                                log_cdf_plus,
-                                torch.where(x > 0.999,
-                                            log_one_minus_cdf_min,
-                                            torch.where(cdf_delta > 1e-5,
-                                                        torch.log(const_max(cdf_delta, 1e-12)),
-                                                        log_pdf_mid - np.log(127.5))))
+        log_probs = torch.where(
+            x < -0.999, log_cdf_plus,
+            torch.where(
+                x > 0.999, log_one_minus_cdf_min,
+                torch.where(cdf_delta > 1e-5, torch.log(const_max(cdf_delta, 1e-12)), log_pdf_mid - np.log(127.5))))
     log_probs = log_probs.sum(dim=3) + log_prob_from_logits(logit_probs)
     mixture_probs = torch.logsumexp(log_probs, -1)
     return -1. * mixture_probs.sum(dim=[1, 2]) / np.prod(xs[1:])
@@ -133,7 +134,10 @@ def sample_from_discretized_mix_logistic(l, nr_mix):
     x0 = const_min(const_max(x[:, :, :, 0], -1.), 1.)
     x1 = const_min(const_max(x[:, :, :, 1] + coeffs[:, :, :, 0] * x0, -1.), 1.)
     x2 = const_min(const_max(x[:, :, :, 2] + coeffs[:, :, :, 1] * x0 + coeffs[:, :, :, 2] * x1, -1.), 1.)
-    return torch.cat([torch.reshape(x0, xs[:-1] + [1]), torch.reshape(x1, xs[:-1] + [1]), torch.reshape(x2, xs[:-1] + [1])], dim=3)
+    return torch.cat(
+        [torch.reshape(x0, xs[:-1] + [1]),
+         torch.reshape(x1, xs[:-1] + [1]),
+         torch.reshape(x2, xs[:-1] + [1])], dim=3)
 
 
 class HModule(nn.Module):

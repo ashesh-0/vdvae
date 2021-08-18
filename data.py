@@ -1,11 +1,12 @@
-import numpy as np
-import pickle
 import os
+import pickle
+
+import numpy as np
 import torch
-from torch.utils.data import TensorDataset
-from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
+from torch.utils.data import TensorDataset
+from torchvision.datasets import ImageFolder
 
 
 def set_up_data(H):
@@ -129,7 +130,9 @@ def imagenet64(data_root):
 
 def ffhq1024(data_root):
     # we did not significantly tune hyperparameters on ffhq-1024, and so simply evaluate on the test set
-    return os.path.join(data_root, 'ffhq1024/train'), os.path.join(data_root, 'ffhq1024/valid'), os.path.join(data_root, 'ffhq1024/valid')
+    return os.path.join(data_root,
+                        'ffhq1024/train'), os.path.join(data_root,
+                                                        'ffhq1024/valid'), os.path.join(data_root, 'ffhq1024/valid')
 
 
 def ffhq256(data_root):
@@ -143,7 +146,9 @@ def ffhq256(data_root):
 
 
 def cifar10(data_root, one_hot=True):
-    tr_data = [unpickle_cifar10(os.path.join(data_root, 'cifar-10-batches-py/', 'data_batch_%d' % i)) for i in range(1, 6)]
+    tr_data = [
+        unpickle_cifar10(os.path.join(data_root, 'cifar-10-batches-py/', 'data_batch_%d' % i)) for i in range(1, 6)
+    ]
     trX = np.vstack(data['data'] for data in tr_data)
     trY = np.asarray(flatten([data['labels'] for data in tr_data]))
     te_data = unpickle_cifar10(os.path.join(data_root, 'cifar-10-batches-py/', 'test_batch'))
