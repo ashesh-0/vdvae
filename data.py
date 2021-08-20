@@ -8,44 +8,17 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset
 from torchvision.datasets import ImageFolder
 
+from data_loader import MNISTNoisyLoader
+
 
 def set_up_data(H):
     shift_loss = -127.5
     scale_loss = 1. / 127.5
-    if H.dataset == 'imagenet32':
-        trX, vaX, teX = imagenet32(H.data_root)
-        H.image_size = 32
-        H.image_channels = 3
-        shift = -116.2373
-        scale = 1. / 69.37404
-    elif H.dataset == 'imagenet64':
-        trX, vaX, teX = imagenet64(H.data_root)
-        H.image_size = 64
-        H.image_channels = 3
-        shift = -115.92961967
-        scale = 1. / 69.37404
-    elif H.dataset == 'ffhq_256':
-        trX, vaX, teX = ffhq256(H.data_root)
-        H.image_size = 256
-        H.image_channels = 3
-        shift = -112.8666757481
-        scale = 1. / 69.84780273
-    elif H.dataset == 'ffhq_1024':
-        trX, vaX, teX = ffhq1024(H.data_root)
-        H.image_size = 1024
-        H.image_channels = 3
-        shift = -0.4387
-        scale = 1.0 / 0.2743
-        shift_loss = -0.5
-        scale_loss = 2.0
-    elif H.dataset == 'cifar10':
-        (trX, _), (vaX, _), (teX, _) = cifar10(H.data_root, one_hot=False)
-        H.image_size = 32
-        H.image_channels = 3
-        shift = -120.63838
-        scale = 1. / 64.16736
-    else:
-        raise ValueError('unknown dataset: ', H.dataset)
+    assert H.dataset == 'cifar10'
+    H.image_size = 32
+    H.image_channels = 3
+    shift = -120.63838
+    scale = 1. / 64.16736
 
     do_low_bit = H.dataset in ['ffhq_256']
 
@@ -60,14 +33,18 @@ def set_up_data(H):
     shift_loss = torch.tensor([shift_loss]).cuda().view(1, 1, 1, 1)
     scale_loss = torch.tensor([scale_loss]).cuda().view(1, 1, 1, 1)
 
-    if H.dataset == 'ffhq_1024':
-        train_data = ImageFolder(trX, transforms.ToTensor())
-        valid_data = ImageFolder(eval_dataset, transforms.ToTensor())
-        untranspose = True
-    else:
-        train_data = TensorDataset(torch.as_tensor(trX))
-        valid_data = TensorDataset(torch.as_tensor(eval_dataset))
-        untranspose = False
+    train_data = MNISTNoisyLoader()
+    valid_data = MNISTNoisyLoader()
+    untranspose = False
+
+    # if H.dataset == 'ffhq_1024':
+    #     train_data = ImageFolder(trX, transforms.ToTensor())
+    #     valid_data = ImageFolder(eval_dataset, transforms.ToTensor())
+    #     untranspose = True
+    # else:
+    #     train_data = TensorDataset(torch.as_tensor(trX))
+    #     valid_data = TensorDataset(torch.as_tensor(eval_dataset))
+    #     untranspose = False
 
     def preprocess_func(x):
         nonlocal shift

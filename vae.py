@@ -6,7 +6,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from vae_helpers import (DmolNet, HModule, draw_gaussian_diag_samples, gaussian_analytical_kl, get_1x1, get_3x3)
+from contrastive_loss import DisentanglementModule
+from vae_helpers import (DmolNet, HModule, draw_gaussian_diag_samples,
+                         gaussian_analytical_kl, get_1x1, get_3x3)
 
 
 class Block(nn.Module):
@@ -241,11 +243,15 @@ class Decoder(HModule):
 
 
 class VAE(HModule):
+    def __init__(self, H, latent_size_dict):
+        super().__init__(H)
+        self._disentangle = DisentanglementModule(latent_size_dict)
+
     def build(self):
         self.encoder = Encoder(self.H)
         self.decoder = Decoder(self.H)
 
-    def forward(self, x, x_target):
+    def forward(self, x, x_target, noise_level_data):
         activations = self.encoder.forward(x)
         px_z, stats = self.decoder.forward(activations)
         distortion_per_pixel = self.decoder.out_net.nll(px_z, x_target)
@@ -255,7 +261,13 @@ class VAE(HModule):
             rate_per_pixel += statdict['kl'].sum(dim=(1, 2, 3))
         rate_per_pixel /= ndims
         elbo = (distortion_per_pixel + rate_per_pixel).mean()
-        return dict(elbo=elbo, distortion=distortion_per_pixel.mean(), rate=rate_per_pixel.mean())
+
+        contrastive_loss = self._disentangle.get_loss(activations, px_z, noise_level_data)
+
+        return dict(elbo=elbo,
+                    distortion=distortion_per_pixel.mean(),
+                    rate=rate_per_pixel.mean(),
+                    contrastive_loss=contrastive_loss)
 
     def forward_get_latents(self, x):
         activations = self.encoder.forward(x)
