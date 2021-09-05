@@ -12,26 +12,29 @@ class MNISTNoisyLoader:
         self.noise_levels = [x[0] for x in fpath_noise_tuple]
         self._fpath_list = [x[1] for x in fpath_noise_tuple]
 
-        print('[{self.__class__.__name__}] Noise levels:', self.noise_levels)
+        print(f'[{self.__class__.__name__}] Noise levels:', self.noise_levels)
         self.N = None
         self._noise_level_count = len(self._fpath_list)
         self._all_data = self.load()
 
     def load(self):
         data = {}
-        for noise_level, fpath in zip(self.noise_levels, self._fpath_list):
-            data[noise_level] = np.load(fpath)
+        for noise_index, fpath in enumerate(self._fpath_list):
+            data[noise_index] = np.load(fpath)
 
-        sz = data[noise_level].shape[0]
+        sz = data[noise_index].shape[0]
         for nlevel in data:
             assert data[nlevel].shape[0] == sz
         self.N = sz
         return data
 
     def __getitem__(self, index):
-        noise_level = index // self.N
-        new_index = index - self.N * noise_level
-        return self._all_data[noise_level][new_index], np.array([self._fpath_list[noise_level][0]])
+        noise_index = index // self.N
+        new_index = index - self.N * noise_index
+        return self._all_data[noise_index][new_index], np.array([self.noise_levels[noise_index]])
+
+    def get_index(self, index, noise_level_index):
+        return self.N * noise_level_index + index
 
     def __len__(self):
         return self.N * self._noise_level_count

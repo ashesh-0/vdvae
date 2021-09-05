@@ -23,7 +23,7 @@ class ContrastiveSampler(Sampler):
     2. In the last few batches, it may not be true.
     """
     def __init__(self, dataset, data_size, noise_levels, batch_size) -> None:
-        super().__init__()
+        super().__init__(dataset)
         self._dset = dataset
         self._N = data_size
         self._noise_levels = noise_levels
@@ -35,9 +35,9 @@ class ContrastiveSampler(Sampler):
         batches_levels = []
         for _ in range(int(np.ceil(self._N / self._batch_N))):
             if self._noise_N > self._batch_N / 2:
-                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N / 2, replace=False)
+                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=False)
             else:
-                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N / 2, replace=True)
+                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=True)
 
             batches_levels.append(levels)
 
