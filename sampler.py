@@ -34,7 +34,7 @@ class ContrastiveSampler(Sampler):
     def __iter__(self):
         batches_levels = []
         for _ in range(int(np.ceil(self._N / self._batch_N))):
-            if self._noise_N > self._batch_N / 2:
+            if self._noise_N >= self._batch_N / 2:
                 levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=False)
             else:
                 levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=True)
