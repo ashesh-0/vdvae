@@ -1,12 +1,13 @@
 """
 Here, we ensure that contrastive loss
 """
+import os
 import sys
 
 import torch
 import torch.nn as nn
 
-sys.path.append("/home/ashesh/ashesh/PyTorch_CIFAR10/")
+sys.path.append(os.path.expanduser("~/ashesh/code/PyTorch_CIFAR10/"))
 from cifar10_models.densenet import densenet121
 
 
