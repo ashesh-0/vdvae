@@ -7,8 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from contrastive_loss import DisentanglementModule
-from vae_helpers import (DmolNet, HModule, draw_gaussian_diag_samples,
-                         gaussian_analytical_kl, get_1x1, get_3x3)
+from vae_helpers import (DmolNet, HModule, draw_gaussian_diag_samples, gaussian_analytical_kl, get_1x1, get_3x3)
 
 
 class Block(nn.Module):
@@ -243,9 +242,9 @@ class Decoder(HModule):
 
 
 class VAE(HModule):
-    def __init__(self, H, latent_size_dict):
+    def __init__(self, H):
         super().__init__(H)
-        self._disentangle = DisentanglementModule(latent_size_dict)
+        self._disentangle = DisentanglementModule({1: 0, 2: 0, 4: 0, 8: 0, 16: H.width // 3, 32: H.width // 3})
 
     def build(self):
         self.encoder = Encoder(self.H)
@@ -262,7 +261,8 @@ class VAE(HModule):
         rate_per_pixel /= ndims
         elbo = (distortion_per_pixel + rate_per_pixel).mean()
 
-        contrastive_loss = self._disentangle.get_loss(activations, px_z, noise_level_data)
+        contrastive_loss = self._disentangle.get_loss(activations, self.decoder.out_net.sample_with_gradient(px_z),
+                                                      noise_level_data)
 
         return dict(elbo=elbo,
                     distortion=distortion_per_pixel.mean(),

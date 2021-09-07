@@ -22,19 +22,27 @@ def set_up_data(H):
 
     do_low_bit = H.dataset in ['ffhq_256']
 
-    if H.test_eval:
-        print('DOING TEST')
-        eval_dataset = teX
-    else:
-        eval_dataset = vaX
+    # if H.test_eval:
+    #     print('DOING TEST')
+    #     eval_dataset = teX
+    # else:
+    #     eval_dataset = vaX
 
     shift = torch.tensor([shift]).cuda().view(1, 1, 1, 1)
     scale = torch.tensor([scale]).cuda().view(1, 1, 1, 1)
     shift_loss = torch.tensor([shift_loss]).cuda().view(1, 1, 1, 1)
     scale_loss = torch.tensor([scale_loss]).cuda().view(1, 1, 1, 1)
-
-    train_data = MNISTNoisyLoader()
-    valid_data = MNISTNoisyLoader()
+    DATA_DIR = '/tmp2/ashesh/ashesh/VAE_based/data/MNIST/noisy/'
+    H.fpath_dict = {
+        # 10: DATA_DIR + 'train_10.npy',
+        20: DATA_DIR + 'train_20.npy',
+        30: DATA_DIR + 'train_30.npy',
+        # 40: DATA_DIR + 'train_40.npy',
+        # 50: DATA_DIR + 'train_50.npy',
+        # 60: DATA_DIR + 'train_60.npy'
+    }
+    train_data = MNISTNoisyLoader(H.fpath_dict)
+    valid_data = MNISTNoisyLoader(H.fpath_dict)
     untranspose = False
 
     # if H.dataset == 'ffhq_1024':
@@ -47,6 +55,7 @@ def set_up_data(H):
     #     untranspose = False
 
     def preprocess_func(x):
+        # NOTE: I've changed x. Now, x contains just input. It does not contain the target.
         nonlocal shift
         nonlocal scale
         nonlocal shift_loss
@@ -56,9 +65,11 @@ def set_up_data(H):
         'takes in a data example and returns the preprocessed input'
         'as well as the input processed for the loss'
         if untranspose:
-            x[0] = x[0].permute(0, 2, 3, 1)
-        inp = x[0].cuda(non_blocking=True).float()
+            x = x.permute(0, 2, 3, 1)
+        inp = x.cuda(non_blocking=True).float()
         out = inp.clone()
+        # import pdb
+        # pdb.set_trace()
         inp.add_(shift).mul_(scale)
         if do_low_bit:
             # 5 bits of precision

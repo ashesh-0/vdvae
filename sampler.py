@@ -30,22 +30,14 @@ class ContrastiveSampler(Sampler):
         self._noise_N = len(self._noise_levels)
         self._batch_N = batch_size
         assert batch_size % 2 == 0
+        self.idx = None
+        self.batches_levels = None
 
     def __iter__(self):
-        batches_levels = []
-        for _ in range(int(np.ceil(self._N / self._batch_N))):
-            if self._noise_N >= self._batch_N / 2:
-                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=False)
-            else:
-                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=True)
 
-            batches_levels.append(levels)
+        level_iters = [LevelIndexIterator(self.idx.copy()) for _ in range(self._noise_N)]
 
-        idx = np.arange(self._batch_N)
-        np.random.shuffle(idx)
-        level_iters = [LevelIndexIterator(idx.copy()) for _ in range(self._noise_N)]
-
-        for one_batch_levels in batches_levels:
+        for one_batch_levels in self.batches_levels:
             batch_data_idx = []
             for level_idx in one_batch_levels:
                 # two same level idx
@@ -54,3 +46,16 @@ class ContrastiveSampler(Sampler):
                 data_idx = level_iters[level_idx].next()
                 batch_data_idx.append(self._dset.get_index(data_idx, level_idx))
             yield batch_data_idx
+
+    def set_epoch(self, epoch):
+        self.batches_levels = []
+        for _ in range(int(np.ceil(self._N / self._batch_N))):
+            if self._noise_N >= self._batch_N / 2:
+                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=False)
+            else:
+                levels = np.random.choice(np.arange(self._noise_N), size=self._batch_N // 2, replace=True)
+
+            self.batches_levels.append(levels)
+
+        self.idx = np.arange(self._batch_N)
+        np.random.shuffle(self.idx)

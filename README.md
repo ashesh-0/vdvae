@@ -104,3 +104,14 @@ python train.py --hps cifar10 --restore_ema_path cifar10-seed3-iter-1050000-mode
 
 
 https://github.com/huyvnphan/PyTorch_CIFAR10
+{
+    "name": "dbi",
+    "host": "129.70.51.6",
+    "protocol": "sftp",
+    "port": 30034,
+    "username": "ubuntu",
+    "remotePath": "/home/ubuntu/ashesh_work/code/vdvae/",
+    "uploadOnSave": true,
+    "privateKeyPath": "/home/ashesh/.ssh/ashesh_ecdsa.txt",
+    "passphrase": null
+}

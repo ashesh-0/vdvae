@@ -48,7 +48,7 @@ def get_sample_for_visualization(data, preprocess_fn, num, dataset):
     for x in DataLoader(data, batch_size=num):
         break
     orig_image = (x[0] * 255.0).to(torch.uint8).permute(0, 2, 3, 1) if dataset == 'ffhq_1024' else x[0]
-    preprocessed = preprocess_fn(x)[0]
+    preprocessed = preprocess_fn(x[0])[0]
     return orig_image, preprocessed
 
 
@@ -63,7 +63,12 @@ def train_loop(H, data_train, data_valid, preprocess_fn, vae, ema_vae, logprint)
     H.ema_rate = torch.as_tensor(H.ema_rate).cuda()
     for epoch in range(starting_epoch, H.num_epochs):
         train_sampler.set_epoch(epoch)
-        dloader = DataLoader(data_train, batch_size=H.n_batch, drop_last=True, pin_memory=True, sampler=train_sampler)
+        dloader = DataLoader(
+            data_train,
+            #  batch_size=H.n_batch,
+            # drop_last=True,
+            pin_memory=True,
+            batch_sampler=train_sampler)
         for x, noise_level_data in dloader:
             data_input, target = preprocess_fn(x)
             training_stats = training_step(H, data_input, target, noise_level_data, vae, ema_vae, optimizer, iterate)

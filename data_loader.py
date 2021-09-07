@@ -1,4 +1,5 @@
 import numpy as np
+from skimage.transform import resize
 
 
 class MNISTNoisyLoader:
@@ -20,8 +21,9 @@ class MNISTNoisyLoader:
     def load(self):
         data = {}
         for noise_index, fpath in enumerate(self._fpath_list):
-            data[noise_index] = np.load(fpath)
-
+            noisy_data = np.load(fpath)
+            noisy_data = resize(noisy_data, (noisy_data.shape[0], 32, 32, 1))
+            data[noise_index] = np.repeat(noisy_data, 3, axis=3)
         sz = data[noise_index].shape[0]
         for nlevel in data:
             assert data[nlevel].shape[0] == sz
